@@ -9,7 +9,10 @@ import (
 
 type Storage struct {
 	path string
-	Data map[string][]byte
+    blob struct {
+        Data map[string][]byte
+        Hash []byte
+    }
 }
 
 func (s *Storage) Save() error {
@@ -18,7 +21,7 @@ func (s *Storage) Save() error {
 		return err
 	}
 	encoder := gob.NewEncoder(file)
-	err2 := encoder.Encode(s.Data)
+	err2 := encoder.Encode(s.blob)
 	if err2 != nil {
 		return err2
 	}
@@ -32,7 +35,7 @@ func (s *Storage) Load() error {
 		return err
 	}
 	decoder := gob.NewDecoder(file)
-	err2 := decoder.Decode(&s.Data)
+	err2 := decoder.Decode(&s.blob)
 	if err2 != nil {
 		return err2
 	}
@@ -41,7 +44,7 @@ func (s *Storage) Load() error {
 }
 
 func (s *Storage) Get(key string) ([]byte, error) {
-	buffer := s.Data[key]
+	buffer := s.blob.Data[key]
 	if buffer == nil {
 		return nil, errors.New("Unknown key")
 	}
@@ -63,12 +66,29 @@ func (s *Storage) Put(key string, data []byte) error {
 		return err
 	}
 	result.Write(ctx.Update(data))
-	s.Data[key] = result.Bytes()
+	s.blob.Data[key] = result.Bytes()
 	return nil
 }
 
+func (s *Storage) Validate(key []byte) bool {
+    if s.blob.Hash == nil {
+        s.blob.Hash = Skein1024(key)
+    } else {
+        if bytes.Equal(Skein1024(key), s.blob.Hash) {
+            return false
+        }
+    }
+    return true
+}
+
+func (s *Storage) Data() map[string][]byte {
+    return s.blob.Data
+}
+
 func NewStorage(path string) (res *Storage) {
-	res = &Storage{path: path, Data: make(map[string][]byte)}
+    //res = &Storage{path: path, blob:*NewBlob()}
+    res = &Storage{path: path}
+    res.blob.Data = make(map[string][]byte)
 	res.Load()
 	return res
 }

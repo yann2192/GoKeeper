@@ -41,14 +41,14 @@ func add(s *Storage) error {
 }
 
 func list(s *Storage) {
-	for key, _ := range s.Data {
+	for key, _ := range s.Data() {
 		fmt.Println(key)
 	}
 }
 
 func del(s *Storage) {
 	key := GetInput("Key : ")
-	delete(s.Data, key)
+	delete(s.Data(), key)
 	//s.Save()
 }
 
@@ -63,8 +63,12 @@ func show(s *Storage, key string) error {
 
 func Main() {
 	KEY = Skein256([]byte(GetPass("Master key : ")))
+    storage := NewStorage(STORAGE_PATH)
+    if storage.Validate(KEY) {
+        fmt.Println("Bad Master Key !")
+        return
+    }
 	var command string = ""
-	storage := NewStorage(STORAGE_PATH)
 	for {
 		command = GetInput("> ")
 		switch command {
@@ -78,7 +82,10 @@ func Main() {
 		case "del", "d":
 			del(storage)
 		case "save", "s":
-			storage.Save()
+            err := storage.Save()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case "quit", "q":
 			return
 		default:
