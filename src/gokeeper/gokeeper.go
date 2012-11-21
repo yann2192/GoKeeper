@@ -64,7 +64,7 @@ func show(s *Storage, key string) error {
 func Main() {
 	KEY = Skein256([]byte(GetPass("Master key : ")))
 	storage := NewStorage(STORAGE_PATH)
-	if storage.Validate(KEY) {
+	if !storage.Validate(KEY) {
 		fmt.Println("Bad Master Key !")
 		return
 	}

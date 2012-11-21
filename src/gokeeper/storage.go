@@ -73,12 +73,13 @@ func (s *Storage) Put(key string, data []byte) error {
 func (s *Storage) Validate(key []byte) bool {
 	if s.blob.Hash == nil {
 		s.blob.Hash = Skein1024(key)
+        return true
 	} else {
 		if bytes.Equal(Skein1024(key), s.blob.Hash) {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
 
 func (s *Storage) Data() map[string][]byte {
