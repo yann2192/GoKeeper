@@ -9,10 +9,10 @@ import (
 
 type Storage struct {
 	path string
-    blob struct {
-        Data map[string][]byte
-        Hash []byte
-    }
+	blob struct {
+		Data map[string][]byte
+		Hash []byte
+	}
 }
 
 func (s *Storage) Save() error {
@@ -71,24 +71,24 @@ func (s *Storage) Put(key string, data []byte) error {
 }
 
 func (s *Storage) Validate(key []byte) bool {
-    if s.blob.Hash == nil {
-        s.blob.Hash = Skein1024(key)
-    } else {
-        if bytes.Equal(Skein1024(key), s.blob.Hash) {
-            return false
-        }
-    }
-    return true
+	if s.blob.Hash == nil {
+		s.blob.Hash = Skein1024(key)
+	} else {
+		if bytes.Equal(Skein1024(key), s.blob.Hash) {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *Storage) Data() map[string][]byte {
-    return s.blob.Data
+	return s.blob.Data
 }
 
 func NewStorage(path string) (res *Storage) {
-    //res = &Storage{path: path, blob:*NewBlob()}
-    res = &Storage{path: path}
-    res.blob.Data = make(map[string][]byte)
+	//res = &Storage{path: path, blob:*NewBlob()}
+	res = &Storage{path: path}
+	res.blob.Data = make(map[string][]byte)
 	res.Load()
 	return res
 }
