@@ -35,7 +35,7 @@ func GetInput(msg string) string {
 func add(s *Storage) error {
 	key := GetInput("Key : ")
 	data := []byte(GetInput("Data : "))
-	err := s.Put(key, data)
+	err := s.Put(key, data, KEY)
 	//s.Save()
 	return err
 }
@@ -53,11 +53,21 @@ func del(s *Storage) {
 }
 
 func show(s *Storage, key string) error {
-	data, err := s.Get(key)
+	data, err := s.Get(key, KEY)
 	if err != nil {
 		return err
 	}
 	fmt.Println(string(data))
+	return nil
+}
+
+func update_key(s *Storage) error {
+	newmasterkey := Skein256([]byte(GetInput("New Master Key : ")))
+	err := s.UpdateKey(KEY, newmasterkey)
+	if err != nil {
+		return err
+	}
+	KEY = newmasterkey
 	return nil
 }
 
@@ -83,6 +93,11 @@ func Main() {
 			del(storage)
 		case "save", "s":
 			err := storage.Save()
+			if err != nil {
+				fmt.Println(err)
+			}
+		case "update", "u":
+			err := update_key(storage)
 			if err != nil {
 				fmt.Println(err)
 			}

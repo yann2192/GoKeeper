@@ -43,25 +43,25 @@ func (s *Storage) Load() error {
 	return nil
 }
 
-func (s *Storage) Get(key string) ([]byte, error) {
+func (s *Storage) Get(key string, masterkey []byte) ([]byte, error) {
 	buffer := s.blob.Data[key]
 	if buffer == nil {
 		return nil, errors.New("Unknown key")
 	}
 	var iv []byte = buffer[:BlockSizeAES()]
 	var ciphertext []byte = buffer[BlockSizeAES():]
-	ctx, err := NewAES(KEY, iv)
+	ctx, err := NewAES(masterkey, iv)
 	if err != nil {
 		return nil, err
 	}
 	return ctx.Update(ciphertext), nil
 }
 
-func (s *Storage) Put(key string, data []byte) error {
+func (s *Storage) Put(key string, data []byte, masterkey []byte) error {
 	var result bytes.Buffer
 	iv := Rand(uint(BlockSizeAES()))
 	result.Write(iv)
-	ctx, err := NewAES(KEY, iv)
+	ctx, err := NewAES(masterkey, iv)
 	if err != nil {
 		return err
 	}
@@ -70,16 +70,31 @@ func (s *Storage) Put(key string, data []byte) error {
 	return nil
 }
 
-func (s *Storage) Validate(key []byte) bool {
+func (s *Storage) Validate(masterkey []byte) bool {
 	if s.blob.Hash == nil {
-		s.blob.Hash = Skein1024(key)
-        return true
+		s.blob.Hash = Skein1024(masterkey)
+		return true
 	} else {
-		if bytes.Equal(Skein1024(key), s.blob.Hash) {
+		if bytes.Equal(Skein1024(masterkey), s.blob.Hash) {
 			return true
 		}
 	}
 	return false
+}
+
+func (s *Storage) UpdateKey(oldmasterkey, masterkey []byte) error {
+	for key, _ := range s.blob.Data {
+		uncrypt_data, err := s.Get(key, oldmasterkey)
+		if err != nil {
+			return err
+		}
+		err = s.Put(key, uncrypt_data, masterkey)
+		if err != nil {
+			return err
+		}
+	}
+	s.blob.Hash = Skein1024(masterkey)
+	return nil
 }
 
 func (s *Storage) Data() map[string][]byte {
