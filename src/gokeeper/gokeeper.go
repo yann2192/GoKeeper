@@ -14,7 +14,7 @@ var (
 
 func GetPass(msg string) string {
 	fmt.Printf(msg)
-	key, err := terminal.ReadPassword(0)
+	key, err := terminal.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Printf("\n")
 	if err != nil {
 		return ""
