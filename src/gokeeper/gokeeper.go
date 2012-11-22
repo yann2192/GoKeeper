@@ -76,7 +76,7 @@ func Main() {
 	storage, err := NewStorage(STORAGE_PATH, KEY)
 	if err != nil && !os.IsNotExist(err) {
 		fmt.Println(err)
-        return
+		return
 	}
 	var command string = ""
 	for {
