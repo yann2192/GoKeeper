@@ -101,7 +101,7 @@ func Skein1024(input []byte) []byte {
 	return ctx.Sum([]byte(""))
 }
 
-func Rand(size uint) []byte {
+func Rand(size int) []byte {
 	buff := make([]byte, size)
 	_, err := rand.Read(buff)
 	if err != nil {

@@ -9,42 +9,83 @@ import (
 
 type Storage struct {
 	path string
-	blob struct {
-		Data map[string][]byte
-		Hash []byte
-	}
+	data map[string][]byte
 }
 
-func (s *Storage) Save() error {
-	file, err := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, 0600)
+func (s *Storage) Save(masterkey []byte) error {
+	var buffer bytes.Buffer
+	iv := Rand(BlockSizeAES())
+	ctx, err := NewAES(masterkey, iv)
 	if err != nil {
 		return err
 	}
-	encoder := gob.NewEncoder(file)
-	err2 := encoder.Encode(s.blob)
+	encoder := gob.NewEncoder(&buffer)
+	err2 := encoder.Encode(s.data)
 	if err2 != nil {
 		return err2
+	}
+	file, err3 := os.OpenFile(s.path, os.O_RDWR|os.O_CREATE, 0600)
+	if err3 != nil {
+		return err3
+	}
+	_, err4 := file.Write(Skein1024(masterkey))
+	if err4 != nil {
+		return err4
+	}
+	_, err5 := file.Write(iv)
+	if err5 != nil {
+		return err5
+	}
+	_, err6 := file.Write(ctx.Update(buffer.Bytes()))
+	if err6 != nil {
+		return err6
 	}
 	file.Close()
 	return nil
 }
 
-func (s *Storage) Load() error {
+func (s *Storage) Load(masterkey []byte) error {
+	var buffer bytes.Buffer
 	file, err := os.OpenFile(s.path, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
-	decoder := gob.NewDecoder(file)
-	err2 := decoder.Decode(&s.blob)
+	var masterhash []byte = make([]byte, 128)
+	_, err2 := file.Read(masterhash)
 	if err2 != nil {
 		return err2
+	}
+	if !bytes.Equal(Skein1024(masterkey), masterhash) {
+		return errors.New("Bad Master Key")
+	}
+	var iv []byte = make([]byte, BlockSizeAES())
+	_, err3 := file.Read(iv)
+	if err3 != nil {
+		return err3
+	}
+	ciphertext, err4 := readAll(file)
+	if err4 != nil {
+		return err4
+	}
+	ctx, err5 := NewAES(masterkey, iv)
+	if err5 != nil {
+		return err5
+	}
+	_, err6 := buffer.Write(ctx.Update(ciphertext))
+	if err6 != nil {
+		return err6
+	}
+	decoder := gob.NewDecoder(&buffer)
+	err7 := decoder.Decode(&s.data)
+	if err7 != nil {
+		return err7
 	}
 	file.Close()
 	return nil
 }
 
 func (s *Storage) Get(key string, masterkey []byte) ([]byte, error) {
-	buffer := s.blob.Data[key]
+	buffer := s.data[key]
 	if buffer == nil {
 		return nil, errors.New("Unknown key")
 	}
@@ -58,32 +99,17 @@ func (s *Storage) Get(key string, masterkey []byte) ([]byte, error) {
 }
 
 func (s *Storage) Put(key string, data []byte, masterkey []byte) error {
-	var result bytes.Buffer
-	iv := Rand(uint(BlockSizeAES()))
-	result.Write(iv)
+	iv := Rand(BlockSizeAES())
 	ctx, err := NewAES(masterkey, iv)
 	if err != nil {
 		return err
 	}
-	result.Write(ctx.Update(data))
-	s.blob.Data[key] = result.Bytes()
+	s.data[key] = append(iv, ctx.Update(data)...)
 	return nil
 }
 
-func (s *Storage) Validate(masterkey []byte) bool {
-	if s.blob.Hash == nil {
-		s.blob.Hash = Skein1024(masterkey)
-		return true
-	} else {
-		if bytes.Equal(Skein1024(masterkey), s.blob.Hash) {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *Storage) UpdateKey(oldmasterkey, masterkey []byte) error {
-	for key, _ := range s.blob.Data {
+	for key, _ := range s.data {
 		uncrypt_data, err := s.Get(key, oldmasterkey)
 		if err != nil {
 			return err
@@ -93,18 +119,15 @@ func (s *Storage) UpdateKey(oldmasterkey, masterkey []byte) error {
 			return err
 		}
 	}
-	s.blob.Hash = Skein1024(masterkey)
 	return nil
 }
 
 func (s *Storage) Data() map[string][]byte {
-	return s.blob.Data
+	return s.data
 }
 
-func NewStorage(path string) (res *Storage) {
-	//res = &Storage{path: path, blob:*NewBlob()}
-	res = &Storage{path: path}
-	res.blob.Data = make(map[string][]byte)
-	res.Load()
-	return res
+func NewStorage(path string, masterkey []byte) (res *Storage, err error) {
+	res = &Storage{path: path, data: make(map[string][]byte)}
+	err = res.Load(masterkey)
+	return res, err
 }

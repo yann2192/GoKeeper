@@ -73,10 +73,9 @@ func update_key(s *Storage) error {
 
 func Main() {
 	KEY = Skein256([]byte(GetPass("Master key : ")))
-	storage := NewStorage(STORAGE_PATH)
-	if !storage.Validate(KEY) {
-		fmt.Println("Bad Master Key !")
-		return
+	storage, err := NewStorage(STORAGE_PATH, KEY)
+	if err != nil {
+		fmt.Println(err)
 	}
 	var command string = ""
 	for {
@@ -92,7 +91,7 @@ func Main() {
 		case "del", "d":
 			del(storage)
 		case "save", "s":
-			err := storage.Save()
+			err := storage.Save(KEY)
 			if err != nil {
 				fmt.Println(err)
 			}
