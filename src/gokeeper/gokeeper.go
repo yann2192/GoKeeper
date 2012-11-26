@@ -72,6 +72,9 @@ func update_key(s *Storage) error {
 }
 
 func Main() {
+	if len(os.Args) > 1 {
+		STORAGE_PATH = os.Args[1]
+	}
 	KEY = Skein256([]byte(GetPass("Master key : ")))
 	storage, err := NewStorage(STORAGE_PATH, KEY)
 	if err != nil && !os.IsNotExist(err) {
