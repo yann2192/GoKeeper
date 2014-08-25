@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"terminal"
 )
 
@@ -41,7 +42,12 @@ func add(s *Storage) error {
 }
 
 func list(s *Storage) {
+	var keys []string
 	for key, _ := range s.Data() {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
 		fmt.Println(key)
 	}
 }
